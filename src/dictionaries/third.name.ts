@@ -1,0 +1,22 @@
+export const thirdName = [
+    "Ivanov",
+    "Petrov",
+    "Sidorov",
+    "Smirnov",
+    "Kuznetsov",
+    "Popov",
+    "Vasiliev",
+    "Volkov",
+    "Fedorov",
+    "Mikhailov",
+    "Novikov",
+    "Morozov",
+    "Pavlov",
+    "Semenov",
+    "Golubev",
+    "Vinogradov",
+    "Bogdanov",
+    "Vorobiev",
+    "Frolov",
+    "Alekseev"
+]
