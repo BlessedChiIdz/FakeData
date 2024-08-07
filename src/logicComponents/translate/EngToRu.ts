@@ -1,4 +1,5 @@
 import { thirdName } from "../../dictionaries/third.name";
+import { IAnyObject } from "../../interfaces/IAnyObject";
 
 const translate = require("node-google-translate-skidz");
 
@@ -50,14 +51,13 @@ async function mapTranslateFunctionName(
   return objToPush;
 }
 
-async function mapTranslateFunction(
-  names: string[],
+async function mapTranslateFunctionObject(
+  objects: IAnyObject[],
   objToPush: string[]
 ) {
   let data = await Promise.all(
-    names.map(async (item, index) => {
-      item += " " + thirdName[Math.floor(Math.random() * thirdName.length)];
-      const translation = await translateFunction(item);
+    objects.map(async (item, index) => {
+      const translation = await translateFunction(item.qwe);
       objToPush.push(translation);
     })
   );
