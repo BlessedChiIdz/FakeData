@@ -22,4 +22,4 @@ export const configuration = {
     password: 'postgres' 
     }
 
-  //databaseUri: 'postgres://yourUsername:yourPassword@localhost/yourDatabase'
+  //databaseUri: 'postgres://yourUsername:yourPassword@localhost/yourDatabase' 

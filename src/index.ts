@@ -8,7 +8,7 @@ import { IMainGeneratorProps } from "./interfaces/IMainGeneratorProps";
 import { mainGenerator } from "./logicComponents/generator/mainGenerator";
 import { generateNames } from "./logicComponents/generator/namesGenerator";
 import { addressGenerator } from "./logicComponents/generator/streetGenerator";
-import { sequalize } from "./secondConn";
+import { sequalize } from "./secondConnection";
 import { fastifyPlaginProd } from "./plugins/bg/db";
 
 const fastify: FastifyInstance = Fastify({ logger: true });
