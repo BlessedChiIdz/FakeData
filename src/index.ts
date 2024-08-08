@@ -136,7 +136,10 @@ fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
         } else {
           reply.status(500).send("wrong column type" + table + item.type)
         }
-        console.log(data)
+        
+        const update  = await fastify.db.query(
+          `UPDATE public."${table.tableName}" SET ${item.data} = data`
+        )
       })
     });
 

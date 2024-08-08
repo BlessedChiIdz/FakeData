@@ -6,6 +6,7 @@ export const namesGenerator = async (itemsCount: number): Promise<string[]> => {
     withAccents: false,
     gender: "male",
   });
+  
   return names;
 };
 
