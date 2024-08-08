@@ -3,24 +3,23 @@ import { IAnyObject } from "../../interfaces/IAnyObject";
 
 const translate = require("node-google-translate-skidz");
 
-
 class translatorBasic {
-  wordEng:string
-  constructor(wordEng:string) {
-    this.wordEng = wordEng
+  wordEng: string;
+  constructor(wordEng: string) {
+    this.wordEng = wordEng;
   }
-    translate(){
-      const itemTranslation =  translate(
-        {
-          text: this.wordEng,
-          source: "es",
-          target: "ru",
-        },
-        function (result: any) {
-          return result;
-        }
-      );
-    }
+  translate() {
+    const itemTranslation = translate(
+      {
+        text: this.wordEng,
+        source: "es",
+        target: "ru",
+      },
+      function (result: any) {
+        return result;
+      }
+    );
+  }
 }
 
 async function translateFunction(wordEng: string) {
@@ -37,10 +36,7 @@ async function translateFunction(wordEng: string) {
   return itemTranslation.translation;
 }
 
-async function mapTranslateFunctionName(
-  names: string[],
-  objToPush: string[]
-) {
+async function mapTranslateFunctionName(names: string[], objToPush: string[]) {
   let data = await Promise.all(
     names.map(async (item, index) => {
       item += " " + thirdName[Math.floor(Math.random() * thirdName.length)];
@@ -51,14 +47,17 @@ async function mapTranslateFunctionName(
   return objToPush;
 }
 
-async function mapTranslateFunctionObject(
-  objects: IAnyObject[],
-  objToPush: string[]
-) {
+export async function mapTranslateFunctionObject(objects: IAnyObject[]) {
+  let objToPush: IAnyObject[] = [];
   let data = await Promise.all(
-    objects.map(async (item, index) => {
-      const translation = await translateFunction(item.qwe);
-      objToPush.push(translation);
+    objects.map(async (object, index) => {
+      for (const key in object) {
+        const value = object[key];
+        const valueRu = await translateFunction(value);
+        object[key] = valueRu;
+      }
+      console.log(object);
+      objToPush.push(object);
     })
   );
   return objToPush;

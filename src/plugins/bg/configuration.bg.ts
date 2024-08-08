@@ -14,4 +14,12 @@ export const configuration = {
   password: 'zzkpika92' 
   }
 
+  export const configLocal = {
+    host: 'localhost',          
+    port: 5432,                 
+    database: 'bgsevlocal',  
+    user: 'postgres',  
+    password: 'postgres' 
+    }
+
   //databaseUri: 'postgres://yourUsername:yourPassword@localhost/yourDatabase'

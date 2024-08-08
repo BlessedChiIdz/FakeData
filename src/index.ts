@@ -1,17 +1,30 @@
 import Fastify, { FastifyInstance, FastifyReply } from "fastify";
-import dbPlugin from "./plugins/bg/db";
 import { IAnyObject } from "./interfaces/IAnyObject";
 import { randFullName } from "@ngneat/falso";
-import mapTranslateFunctionName from "./logicComponents/translate/EngToRu";
+import mapTranslateFunctionName, {
+  mapTranslateFunctionObject,
+} from "./logicComponents/translate/EngToRu";
 import { IMainGeneratorProps } from "./interfaces/IMainGeneratorProps";
 import { mainGenerator } from "./logicComponents/generator/mainGenerator";
 import { generateNames } from "./logicComponents/generator/namesGenerator";
 import { addressGenerator } from "./logicComponents/generator/streetGenerator";
+import { sequalize } from "./secondConn";
+import { fastifyPlaginProd } from "./plugins/bg/db";
 
 const fastify: FastifyInstance = Fastify({ logger: true });
 
 // Регистрация плагина для подключения к базе данных
-fastify.register(dbPlugin);
+fastify.register(fastifyPlaginProd);
+
+const startProdConnection = async () => {
+  try {
+    await fastify.listen(3000);
+    fastify.log.info(`Server listening on ${fastify.server.address()}`);
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
+};
 
 fastify.get("/generateRandomNames", async (req, reply: FastifyReply) => {
   try {
@@ -35,11 +48,11 @@ fastify.get("/user", async (req: IAnyObject, reply: FastifyReply) => {
       const request = await fastify.db.manyOrNone(
         `SELECT "fio", "phone", "contactPhone", "address" 
       FROM public."Emergency_Declarers" LIMIT $1 OFFSET $2`,
-        [portionLenght, i * portionLenght]     //можно количество в env указать
+        [portionLenght, i * portionLenght] //можно количество в env указать
       );
       const generatedNames: string[] = await generateNames(portionLenght);
       request.map((item, index) => {
-        item.fio = generatedNames[index];     //Доделать логику с пропуском чела, если следующий в базе он же
+        item.fio = generatedNames[index]; //Доделать логику с пропуском чела, если следующий в базе он же
       });
       console.log(request);
     }
@@ -71,30 +84,20 @@ fastify.get("/stand", async (req: IAnyObject, reply: FastifyReply) => {
 });
 
 // Запуск сервера
-const start = async () => {
-  try {
-    await fastify.listen(3000);
-    fastify.log.info(`Server listening on ${fastify.server.address()}`);
-  } catch (err) {
-    fastify.log.error(err);
-    process.exit(1);
-  }
-};
 
-
-fastify.get("/testMethod", async(req: IAnyObject, reply: FastifyReply)=>{
+fastify.get("/testMethod", async (req: IAnyObject, reply: FastifyReply) => {
   try {
     const user = await fastify.db.manyOrNone(
       `SELECT "fio", "phone", "contactPhone", "address" 
       FROM public."Emergency_Declarers" LIMIT 10`
     );
-    const props:IMainGeneratorProps = {
-      name:true,
-      params:{
-        itemsCount:100
-      }
-    }
-    const qwe = mainGenerator(props) 
+    const props: IMainGeneratorProps = {
+      name: true,
+      params: {
+        itemsCount: 100,
+      },
+    };
+    const qwe = mainGenerator(props);
     if (user) {
       reply.send(user);
     } else {
@@ -103,18 +106,18 @@ fastify.get("/testMethod", async(req: IAnyObject, reply: FastifyReply)=>{
   } catch (err) {
     reply.status(500).send(err);
   }
-})
+});
 
-
-
-fastify.get("/testMethod2", async(req: IAnyObject, reply: FastifyReply)=>{
+fastify.get("/testMethod2", async (req: IAnyObject, reply: FastifyReply) => {
   try {
-    const address = addressGenerator(100)
-    console.log(address)
+    const address = addressGenerator(100);
+    let translate: IAnyObject[] = [];
+    translate = await mapTranslateFunctionObject(address);
+    return translate;
   } catch (err) {
     reply.status(500).send(err);
   }
-})
+});
 
-
-start();
+startProdConnection();
+sequalize()
