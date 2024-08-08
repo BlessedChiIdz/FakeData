@@ -5,7 +5,7 @@ import { phoneNumberGenerator } from "./phoneNumberGenerator";
 import { yearGenerator } from "./yearGenerator";
 
 
-export const mainGenerator = (key:string) => {
+export const mainGenerator = (key:string):Function | undefined => {
     switch (key){
         case 'fio1':
             return namesGenerator

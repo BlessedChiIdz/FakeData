@@ -12,6 +12,8 @@ import { fastifyPlaginProd } from "./plugins/bg/db";
 import { startLocal } from "./secondConnection";
 import { userInfo } from "os";
 import { tablesToModify } from "./constants/tables";
+import { error } from "console";
+import { Limit } from "./constants/generateConstants";
 const format = require('pg-format');
 const fastify: FastifyInstance = Fastify({ logger: true });
 
@@ -111,7 +113,7 @@ fastify.get("/testMethod", async (req: IAnyObject, reply: FastifyReply) => {
 
 fastify.get("/testMethod2", async (req: IAnyObject, reply: FastifyReply) => {
   try {
-    const address = addressGenerator(100);
+    const address = await addressGenerator(100);
     let translate: IAnyObject[] = [];
     translate = await mapTranslateFunctionObject(address);
   } catch (err) {
@@ -122,12 +124,19 @@ fastify.get("/testMethod2", async (req: IAnyObject, reply: FastifyReply) => {
 fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
   try {
     tablesToModify.map(async (table) => {
-      const formattedColumns = table.tableColumns.map(column => format('%I', column)).join(', ');
+      const formattedColumns = table.tableColumns.map(column => format('%I', column.data)).join(', ');
       const tables = await fastify.db.manyOrNone(
-        `SELECT ${formattedColumns} FROM public."${table.tableName}" LIMIT 5`
+        `SELECT ${formattedColumns} FROM public."${table.tableName}" LIMIT ${Limit}` //TODO доделать, исключая генерацию данных при одинаковых людях
       );
-      tables.map((item,index)=>{
-
+      table.tableColumns.map(async(item)=>{
+        const funcToGenerate =  mainGenerator(item.type)
+        let data;
+        if(funcToGenerate !== undefined){
+          data = await funcToGenerate(Limit)
+        } else {
+          reply.status(500).send("wrong column type" + table + item.type)
+        }
+        console.log(data)
       })
     });
 
