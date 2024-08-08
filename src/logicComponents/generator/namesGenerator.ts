@@ -1,6 +1,6 @@
 import { randFullName, randPhoneNumber } from "@ngneat/falso";
 
-export const generateNames = async (itemsCount: number): Promise<string[]> => {
+export const namesGenerator = async (itemsCount: number): Promise<string[]> => {
   let names: string[] = randFullName({
     length: itemsCount,
     withAccents: false,

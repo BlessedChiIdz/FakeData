@@ -1,41 +1,41 @@
 import Fastify, { FastifyInstance, FastifyReply } from "fastify";
 import { fastifyPlaginLocal } from "./plugins/bg/db";
 
-const fastify: FastifyInstance = Fastify({ logger: true });
+const fastifyLocal: FastifyInstance = Fastify({ logger: true });
 
 
-fastify.register(fastifyPlaginLocal);
+fastifyLocal.register(fastifyPlaginLocal);
 
 
-fastify.get("/generateRandomNames", async (req, reply: FastifyReply) => {
+fastifyLocal.get("/generateRandomNames", async (req, reply: FastifyReply) => {
 
   try {
-    const user = await fastify.db.manyOrNone(
+    const user = await fastifyLocal.db.manyOrNone(
       `SELECT * FROM public."user"
-      ORDER BY id ASC `
+      ORDER BY id ASC`
     );
     if (user) {
       reply.send(user);
+      return(user)
     } else {
       reply.status(404).send({ message: "User not found" });
     }
     } catch (err) {
       reply.status(500).send(err);
     }
-
 });
 
 
 
-export const sequalize = async () => {
+export const startLocal = async () => {
     try {
-      await fastify.listen(4000);
-      fastify.log.info(`Server listening on ${fastify.server.address()}`);
+      await fastifyLocal.listen(4000);
+      fastifyLocal.log.info(`Server listening on ${fastifyLocal.server.address()}`);
     } catch (err) {
-      fastify.log.error(err);
+      fastifyLocal.log.error(err);
       process.exit(1);
     }
   };
 
 
- sequalize()
+  startLocal()

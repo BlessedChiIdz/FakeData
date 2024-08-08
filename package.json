@@ -15,6 +15,7 @@
     "@ngneat/falso": "^7.2.0",
     "node-google-translate-skidz": "^1.1.2",
     "pg": "^8.12.0",
+    "pg-format": "^1.0.4",
     "pg-promise": "^11.9.1"
   },
   "devDependencies": {

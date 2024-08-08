@@ -6,11 +6,13 @@ import mapTranslateFunctionName, {
 } from "./logicComponents/translate/EngToRu";
 import { IMainGeneratorProps } from "./interfaces/IMainGeneratorProps";
 import { mainGenerator } from "./logicComponents/generator/mainGenerator";
-import { generateNames } from "./logicComponents/generator/namesGenerator";
-import { addressGenerator } from "./logicComponents/generator/streetGenerator";
-import { sequalize } from "./secondConnection";
+import { namesGenerator } from "./logicComponents/generator/namesGenerator";
+import { addressGenerator } from "./logicComponents/generator/addressGenerator";
 import { fastifyPlaginProd } from "./plugins/bg/db";
-
+import { startLocal } from "./secondConnection";
+import { userInfo } from "os";
+import { tablesToModify } from "./constants/tables";
+const format = require('pg-format');
 const fastify: FastifyInstance = Fastify({ logger: true });
 
 // Регистрация плагина для подключения к базе данных
@@ -28,7 +30,7 @@ const startProdConnection = async () => {
 
 fastify.get("/generateRandomNames", async (req, reply: FastifyReply) => {
   try {
-    const names = await generateNames(100);
+    const names = await namesGenerator(100);
     let namesRu: string[] = [];
     const pushToNamesRu = await mapTranslateFunctionName(names, namesRu);
     reply.send(namesRu);
@@ -50,13 +52,12 @@ fastify.get("/user", async (req: IAnyObject, reply: FastifyReply) => {
       FROM public."Emergency_Declarers" LIMIT $1 OFFSET $2`,
         [portionLenght, i * portionLenght] //можно количество в env указать
       );
-      const generatedNames: string[] = await generateNames(portionLenght);
+      const generatedNames: string[] = await namesGenerator(portionLenght);
       request.map((item, index) => {
         item.fio = generatedNames[index]; //Доделать логику с пропуском чела, если следующий в базе он же
       });
       console.log(request);
     }
-
     if (rows) {
       reply.send(countOfRequests);
     } else {
@@ -97,7 +98,7 @@ fastify.get("/testMethod", async (req: IAnyObject, reply: FastifyReply) => {
         itemsCount: 100,
       },
     };
-    const qwe = mainGenerator(props);
+    
     if (user) {
       reply.send(user);
     } else {
@@ -113,11 +114,27 @@ fastify.get("/testMethod2", async (req: IAnyObject, reply: FastifyReply) => {
     const address = addressGenerator(100);
     let translate: IAnyObject[] = [];
     translate = await mapTranslateFunctionObject(address);
-    return translate;
+  } catch (err) {
+    reply.status(500).send(err);
+  }
+});
+
+fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
+  try {
+    tablesToModify.map(async (table) => {
+      const formattedColumns = table.tableColumns.map(column => format('%I', column)).join(', ');
+      const tables = await fastify.db.manyOrNone(
+        `SELECT ${formattedColumns} FROM public."${table.tableName}" LIMIT 5`
+      );
+      tables.map((item,index)=>{
+
+      })
+    });
+
   } catch (err) {
     reply.status(500).send(err);
   }
 });
 
 startProdConnection();
-sequalize()
+startLocal();

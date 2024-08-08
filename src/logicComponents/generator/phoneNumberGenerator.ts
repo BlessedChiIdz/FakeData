@@ -1,6 +1,6 @@
 import { randPhoneNumber } from "@ngneat/falso";
 
-export const generatePhoneNumber = async (
+export const phoneNumberGenerator = async (
     itemsCount: number
   ): Promise<string[]> => {
     let names: string[] = randPhoneNumber({ countryCode: "RU", length: itemsCount });

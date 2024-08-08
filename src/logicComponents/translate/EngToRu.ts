@@ -1,4 +1,4 @@
-import { thirdName } from "../../dictionaries/third.name";
+import { thirdName } from "../../constants/third.name";
 import { IAnyObject } from "../../interfaces/IAnyObject";
 
 const translate = require("node-google-translate-skidz");
@@ -62,5 +62,9 @@ export async function mapTranslateFunctionObject(objects: IAnyObject[]) {
   );
   return objToPush;
 }
+
+
+
+
 
 export default mapTranslateFunctionName;

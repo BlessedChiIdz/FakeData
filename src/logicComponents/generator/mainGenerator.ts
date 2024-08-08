@@ -1,16 +1,23 @@
 import { IMainGeneratorProps } from "../../interfaces/IMainGeneratorProps";
-import { generateNames } from "./namesGenerator";
-import { generatePhoneNumber } from "./phoneNumberGenerator";
+import { addressGenerator } from "./addressGenerator";
+import { namesGenerator } from "./namesGenerator";
+import { phoneNumberGenerator } from "./phoneNumberGenerator";
+import { yearGenerator } from "./yearGenerator";
 
 
-export const mainGenerator = (props:IMainGeneratorProps) => {
-    
-    if(props.name){
-        const names = generateNames(props.params.itemsCount)
-    }
-
-
-    if(props.phone){
-        const phone = generatePhoneNumber(props.params.itemsCount)
+export const mainGenerator = (key:string) => {
+    switch (key){
+        case 'fio1':
+            return namesGenerator
+            break;
+        case 'phone1':
+            return phoneNumberGenerator
+            break;
+        case 'address':
+            return addressGenerator
+            break;
+        case 'year1':
+            return yearGenerator
+            break;
     }
 }
