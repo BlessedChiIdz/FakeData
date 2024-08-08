@@ -1,6 +1,6 @@
 import Fastify, { FastifyInstance, FastifyReply } from "fastify";
 import { IAnyObject } from "./interfaces/IAnyObject";
-import { randFullName } from "@ngneat/falso";
+import { randAddress, randFullName } from "@ngneat/falso";
 import mapTranslateFunctionName, {
   mapTranslateFunctionObject,
 } from "./logicComponents/translate/EngToRu";
@@ -100,9 +100,9 @@ fastify.get("/testMethod", async (req: IAnyObject, reply: FastifyReply) => {
         itemsCount: 100,
       },
     };
-    
+    const addresses = randAddress({length:1, locale:'ru'})
     if (user) {
-      reply.send(user);
+      reply.send(addresses);
     } else {
       reply.status(404).send({ message: "User not found" });
     }
@@ -111,38 +111,41 @@ fastify.get("/testMethod", async (req: IAnyObject, reply: FastifyReply) => {
   }
 });
 
-fastify.get("/testMethod2", async (req: IAnyObject, reply: FastifyReply) => {
-  try {
-    const address = await addressGenerator(100);
-    let translate: IAnyObject[] = [];
-    translate = await mapTranslateFunctionObject(address);
-  } catch (err) {
-    reply.status(500).send(err);
-  }
-});
+
 
 fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
   try {
     tablesToModify.map(async (table) => {
-      const formattedColumns = table.tableColumns.map(column => format('%I', column.data)).join(', ');
-      const tables = await fastify.db.manyOrNone(
-        `SELECT ${formattedColumns} FROM public."${table.tableName}" LIMIT ${Limit}` //TODO доделать, исключая генерацию данных при одинаковых людях
-      );
-      table.tableColumns.map(async(item)=>{
-        const funcToGenerate =  mainGenerator(item.type)
+      // const formattedColumns = table.tableColumns.map(column => format('%I', column.data)).join(', ');
+      // const tables = await fastify.db.manyOrNone(
+      //   `SELECT ${formattedColumns} FROM public."${table.tableName}" LIMIT ${Limit}` //TODO доделать, исключая генерацию данных при одинаковых людях
+      // );
+      table.tableColumns.map(async(column) => {
+        const funcToGenerate =  mainGenerator(column.type)
         let data;
         if(funcToGenerate !== undefined){
           data = await funcToGenerate(Limit)
         } else {
-          reply.status(500).send("wrong column type" + table + item.type)
+          reply.status(500).send("wrong column type" + table + column.type)
         }
-        
-        const update  = await fastify.db.query(
-          `UPDATE public."${table.tableName}" SET ${item.data} = data`
-        )
+        console.log(data)
+        for(let i = 0;i<Limit;i++){
+          const update  = await fastify.db.query(
+            `
+            WITH rows_to_update AS (
+              SELECT id
+              FROM public."${table.tableName}"
+              ORDER BY id
+              LIMIT 1
+            )
+            UPDATE public."${table.tableName}" SET "${column.data}" = '${data[i]}' 
+            FROM rows_to_update
+            WHERE public."${table.tableName}".id = rows_to_update.id;` 
+          )
+        }
       })
     });
-
+    reply.send(1)
   } catch (err) {
     reply.status(500).send(err);
   }
