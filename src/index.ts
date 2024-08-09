@@ -19,6 +19,7 @@ import { IAddress } from "./interfaces/IAddress1";
 const format = require("pg-format");
 const fs = require("fs");
 import { v4 as uuidv4 } from "uuid";
+import { Column } from "pg-promise";
 
 let config: any;
 fs.readFile("./tables.json", "utf8", function (err: any, data: any) {
@@ -122,15 +123,13 @@ fastify.get("/testMethod", async (req: IAnyObject, reply: FastifyReply) => {
 
 fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
   for (const table of config.tables) {
-    // const formattedColumns = table.tableColumns.map(column => format('%I', column.data)).join(', ');
-    // const tables = await fastify.db.manyOrNone(
-    //   `SELECT ${formattedColumns} FROM public."${table.tableName}" LIMIT ${Limit}` //TODO доделать, исключая генерацию данных при одинаковых людях
-    // );
+    let dataArr = [];
+    const tableColumnNames: string[] = [];
+    table.tableColumns.map((column: any) => {
+      tableColumnNames.push(column.columnName);
+    });
+    const whatToSelect = tableColumnNames.join(", ");
     for (const column of table.tableColumns) {
-      const queryCount = await fastify.db.oneOrNone(`
-          SELECT count(*) AS exact_count FROM public."Emergency_Declarers";
-          `);
-      const columnCount = queryCount.exact_count;
       type CustomFakerMethods = keyof typeof customFaker;
       const source: CustomFakerMethods = column.source as CustomFakerMethods;
       const sourceMethod: string = column.sourceMethod;
@@ -153,32 +152,36 @@ fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
           console.log(err);
         }
       }
-      try {
-        for (let i = 0; i < columnCount; i++) {
-          const data = await (customFaker as any)[source][sourceMethod](params);
-          const update = await fastify.db.query(
-            ` 
-              WITH rows_to_update AS (
-                SELECT id
-                FROM public."${table.tableName}"
-                ORDER BY id
-                LIMIT 1
-                OFFSET ${i}
-              )
-              UPDATE public."${table.tableName}" SET "${
-              column.columnName
-            }" = '${data as string}' 
-              FROM rows_to_update
-              WHERE public."${table.tableName}".id = rows_to_update.id;
-            `
-          );
-        }
-      } catch (error) {
-        console.log(error);
+
+      for (let i = 0; i < 500; i++) {
+        const data = await (customFaker as any)[source][sourceMethod](params);
+        dataArr.push(data);
       }
 
-      //reply.send(1);
+      // const get = await fastify.db.query(
+      //   `
+      //     DO $$
+      //     DECLARE
+      //         iteration INT := 0;
+      //     BEGIN
+      //         WHILE iteration < 10 LOOP
+      //             SELECT ${whatToSelect}
+      //             FROM public."${table.tableName}";
+      //             iteration := iteration + 1;
+      //         END LOOP;
+      //     END $$;
+      //   `
+      // );
+      //console.log("qweqeqweqewweqweq" + get);
+
+      // const update = await fastify.db.manyOrNone(
+      //   `
+      //     SELECT '${whatToSelect}' from public."${table.tableName} LIMIT 100";
+      //   `
+      // );
+      console.log(`SELECT '${whatToSelect}' from public."${table.tableName} LIMIT 100;`)
     }
+    console.log(dataArr[501]);
   }
 });
 
