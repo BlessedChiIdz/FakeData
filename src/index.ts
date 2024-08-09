@@ -1,28 +1,40 @@
 import Fastify, { FastifyInstance, FastifyReply } from "fastify";
 import { IAnyObject } from "./interfaces/IAnyObject";
 import { randAddress, randFullName } from "@ngneat/falso";
-import mapTranslateFunctionName, {
-  mapTranslateFunctionObject,
-} from "./logicComponents/translate/EngToRu";
 import { IMainGeneratorProps } from "./interfaces/IMainGeneratorProps";
-import { mainGenerator } from "./logicComponents/generator/mainGenerator";
-import { namesGenerator } from "./logicComponents/generator/namesGenerator";
-import { addressGenerator } from "./logicComponents/generator/addressGenerator";
+import { mainGenerator } from "./logicComponents/generatorOld/mainGenerator";
+import { namesGenerator } from "./logicComponents/generatorOld/namesGenerator";
+import { addressGenerator } from "./logicComponents/generatorOld/addressGenerator";
 import { fastifyPlaginProd } from "./plugins/bg/db";
 import { startLocal } from "./secondConnection";
 import { userInfo } from "os";
 import { tablesToModify } from "./constants/tables";
 import { error } from "console";
 import { Limit } from "./constants/generateConstants";
-const format = require('pg-format');
+import { mapTranslateFunctionName } from "./logicComponents/translate/EngToRuGoogle";
+import i18next from "i18next";
+import { customFaker } from "./logicComponents/Faker/faker";
+import { Faker } from "@faker-js/faker";
+import { IAddress } from "./interfaces/IAddress1";
+const format = require("pg-format");
+const fs = require("fs");
+import { v4 as uuidv4 } from "uuid";
+
+let config: any;
+fs.readFile("./tables.json", "utf8", function (err: any, data: any) {
+  if (err) throw err;
+  config = JSON.parse(data);
+});
+
 const fastify: FastifyInstance = Fastify({ logger: true });
+const faker = customFaker;
 
 // Регистрация плагина для подключения к базе данных
 fastify.register(fastifyPlaginProd);
 
 const startProdConnection = async () => {
   try {
-    await fastify.listen(3000);
+    await fastify.listen(3002);
     fastify.log.info(`Server listening on ${fastify.server.address()}`);
   } catch (err) {
     fastify.log.error(err);
@@ -30,14 +42,10 @@ const startProdConnection = async () => {
   }
 };
 
-fastify.get("/generateRandomNames", async (req, reply: FastifyReply) => {
+fastify.get("/test", async (req, reply: FastifyReply) => {
   try {
-    const names = await namesGenerator(100);
-    let namesRu: string[] = [];
-    const pushToNamesRu = await mapTranslateFunctionName(names, namesRu);
-    reply.send(namesRu);
   } catch (err) {
-    reply.status(500).send(err);
+    process.exit(1);
   }
 });
 
@@ -61,7 +69,7 @@ fastify.get("/user", async (req: IAnyObject, reply: FastifyReply) => {
       console.log(request);
     }
     if (rows) {
-      reply.send(countOfRequests);
+      reply.send(1);
     } else {
       reply.status(404).send({ message: "User not found" });
     }
@@ -94,13 +102,14 @@ fastify.get("/testMethod", async (req: IAnyObject, reply: FastifyReply) => {
       `SELECT "fio", "phone", "contactPhone", "address" 
       FROM public."Emergency_Declarers" LIMIT 10`
     );
+    console.log(config);
     const props: IMainGeneratorProps = {
       name: true,
       params: {
         itemsCount: 100,
       },
     };
-    const addresses = randAddress({length:1, locale:'ru'})
+    const addresses = randAddress({ length: 1, locale: "ru" });
     if (user) {
       reply.send(addresses);
     } else {
@@ -111,45 +120,74 @@ fastify.get("/testMethod", async (req: IAnyObject, reply: FastifyReply) => {
   }
 });
 
-
-
 fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
-  try {
-    tablesToModify.map(async (table) => {
-      // const formattedColumns = table.tableColumns.map(column => format('%I', column.data)).join(', ');
-      // const tables = await fastify.db.manyOrNone(
-      //   `SELECT ${formattedColumns} FROM public."${table.tableName}" LIMIT ${Limit}` //TODO доделать, исключая генерацию данных при одинаковых людях
-      // );
-      table.tableColumns.map(async(column) => {
-        const funcToGenerate =  mainGenerator(column.type)
-        let data;
-        if(funcToGenerate !== undefined){
-          data = await funcToGenerate(Limit)
-        } else {
-          reply.status(500).send("wrong column type" + table + column.type)
+  for (const table of config.tables) {
+    // const formattedColumns = table.tableColumns.map(column => format('%I', column.data)).join(', ');
+    // const tables = await fastify.db.manyOrNone(
+    //   `SELECT ${formattedColumns} FROM public."${table.tableName}" LIMIT ${Limit}` //TODO доделать, исключая генерацию данных при одинаковых людях
+    // );
+    for (const column of table.tableColumns) {
+      const queryCount = await fastify.db.oneOrNone(`
+          SELECT count(*) AS exact_count FROM public."Emergency_Declarers";
+          `);
+      const columnCount = queryCount.exact_count;
+      type CustomFakerMethods = keyof typeof customFaker;
+      const source: CustomFakerMethods = column.source as CustomFakerMethods;
+      const sourceMethod: string = column.sourceMethod;
+      const sourceProps: string = column.columnProps;
+      let params;
+      //console.log(column);
+      if (column.multipleProps === "Yes") {
+        params = sourceProps.split(", ").reduce((acc, param) => {
+          const [key, value] = param.split(":");
+          acc[key.trim()] = parseInt(value.trim(), 10);
+          return acc;
+        }, {} as Record<string, number>);
+        console.log(params);
+      }
+      if (column.multipleProps === "No") {
+        try {
+          const [key, value] = sourceProps.split(": ");
+          params = { [key.trim()]: value.trim() };
+        } catch (err) {
+          console.log(err);
         }
-        console.log(data)
-        for(let i = 0;i<Limit;i++){
-          const update  = await fastify.db.query(
+      }
+      try {
+        for (let i = 0; i < columnCount; i++) {
+          const data = await (customFaker as any)[source][sourceMethod](params);
+          const update = await fastify.db.query(
+            ` 
+              WITH rows_to_update AS (
+                SELECT id
+                FROM public."${table.tableName}"
+                ORDER BY id
+                LIMIT 1
+                OFFSET ${i}
+              )
+              UPDATE public."${table.tableName}" SET "${
+              column.columnName
+            }" = '${data as string}' 
+              FROM rows_to_update
+              WHERE public."${table.tableName}".id = rows_to_update.id;
             `
-            WITH rows_to_update AS (
-              SELECT id
-              FROM public."${table.tableName}"
-              ORDER BY id
-              LIMIT 1
-            )
-            UPDATE public."${table.tableName}" SET "${column.data}" = '${data[i]}' 
-            FROM rows_to_update
-            WHERE public."${table.tableName}".id = rows_to_update.id;` 
-          )
+          );
         }
-      })
-    });
-    reply.send(1)
-  } catch (err) {
-    reply.status(500).send(err);
+      } catch (error) {
+        console.log(error);
+      }
+
+      //reply.send(1);
+    }
   }
 });
 
+async function generateAddress() {
+  const address: IAddress = {
+    uuid: uuidv4(),
+    oktmo: faker.location.zipCode(),
+    region: faker.location.state(),
+  };
+}
+
 startProdConnection();
-startLocal();

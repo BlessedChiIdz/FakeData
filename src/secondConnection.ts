@@ -29,7 +29,7 @@ fastifyLocal.get("/generateRandomNames", async (req, reply: FastifyReply) => {
 
 export const startLocal = async () => {
     try {
-      await fastifyLocal.listen(4000);
+      await fastifyLocal.listen(4001); 
       fastifyLocal.log.info(`Server listening on ${fastifyLocal.server.address()}`);
     } catch (err) {
       fastifyLocal.log.error(err);

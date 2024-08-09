@@ -36,7 +36,7 @@ async function translateFunction(wordEng: string) {
   return itemTranslation.translation;
 }
 
-async function mapTranslateFunctionName(names: string[], objToPush: string[]) {
+export async function mapTranslateFunctionName(names: string[], objToPush: string[]) {
   let data = await Promise.all(
     names.map(async (item, index) => {
       item += " " + thirdName[Math.floor(Math.random() * thirdName.length)];
@@ -67,4 +67,3 @@ export async function mapTranslateFunctionObject(objects: IAnyObject[]) {
 
 
 
-export default mapTranslateFunctionName;

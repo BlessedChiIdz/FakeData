@@ -1,6 +1,6 @@
 
 
-export interface IAddress1 {
+export interface IAddress {
     uuid:string,
     oktmo?: string,
     region?:string,

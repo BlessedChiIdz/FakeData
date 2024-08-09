@@ -1,0 +1,43 @@
+{
+   "tables": [
+        {
+            "tableName": "Emergency_Declarers",
+            "tableColumns": [
+                {
+                    "columnName":"fio",
+                    "source": "person",
+                    "sourceMethod": "fullName",
+                    "columnProps": "sex: male",
+                    "multipleProps":"No"
+                },
+                {
+                    "columnName":"phone",
+                    "source": "number",
+                    "sourceMethod": "int",
+                    "columnProps" : "min:11111, max:88888888",
+                    "multipleProps":"Yes"
+                }
+            ]
+        },
+        {
+            "tableName": "Emergency_Humans",
+            "tableColumns": [
+                {
+                    "columnName":"fio",
+                    "source": "person",
+                    "sourceMethod": "fullName"
+                },
+                {
+                    "columnName":"birthYear",
+                    "source": "number",
+                    "sourceMethod": "int",
+                    "columnProps": "min:1958, max:2010",
+                    "multipleProps":"Yes"
+                }
+            ]
+        }
+    ],
+    "config":{
+
+    }
+}

@@ -1,10 +1,10 @@
 import { randAddress, randLatitude, randLongitude, randNumber } from "@ngneat/falso"
-import { IAddress1 } from "../../constants/IAddress1";
+import { IAddress } from "../../interfaces/IAddress1";
 import { v4 as uuidv4 } from 'uuid';
 
 
 export const addressGenerator = async(itemsCount:number) => {  //mb async
-    const addresses = randAddress({length:itemsCount});
+    const addresses = await randAddress({length:itemsCount});
     const obj:string[] = []
     
     addresses.map((address)=>{
@@ -13,7 +13,7 @@ export const addressGenerator = async(itemsCount:number) => {  //mb async
         const longitude = randLongitude()
         const oktmo = `${randNumber({min:15312000, max:95312000})}`
         const houseNumber = `${randNumber({min:20, max:100})}`
-        const objToPush:IAddress1 = {
+        const objToPush:IAddress = {
             uuid: uuidv4(),
             oktmo: oktmo,
             region: address.county, 
@@ -27,7 +27,7 @@ export const addressGenerator = async(itemsCount:number) => {  //mb async
             postalCode: address.zipCode,
             houseNumber: houseNumber
         }
-        const qwe =JSON.stringify(objToPush)
+        const qwe = JSON.stringify(objToPush)
         obj.push(qwe)
     })
     

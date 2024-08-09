@@ -7,11 +7,11 @@ export const configuration = {
   };
   
   export const configProd = {
-  host: '192.168.32.207',          
-  port: 5432,                 
-  database: 'bgsevpreprod',  
+  host: 'localhost',          
+  port: 5555,                 
+  database: 'Faker',  
   user: 'postgres',  
-  password: 'zzkpika92' 
+  password: 'postgres'
   }
 
   export const configLocal = {
