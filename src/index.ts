@@ -154,18 +154,24 @@ async function Update(tableName: string, columnNames: any, columnsInTable:any,le
           RETURNING (id)
        ) TABLE upd LIMIT 1;
       `);
-      let i = 0;
-    while (true) {
-      const qwe =  await generateData(columnsInTable[0+i],columnsInTable[1],columnsInTable[2]);
-      console.log("data = "+data)
-      let arrToResult:string[] = k.concat(data)
-      const result = await fastify.db.query(`EXECUTE _q($1,$${paramsS})`, arrToResult);   
-      console.log("result = "+result[0].id)
-      const row = result[0].id;
-      if (row === undefined) break;
-      k = row.k;
-      //console.log(`(k, v) = ('${k}'`); 
-    }
+      
+      for(const column of columnsInTable){
+        let i = 0;
+        while (true) {
+          const data =  await generateData(columnsInTable[0+i],columnsInTable[1+i],columnsInTable[2+i]);
+          console.log("data = "+ data)
+          let arrToResult:string[] = k.concat(data)
+          const result = await fastify.db.query(`EXECUTE _q($1,$${paramsS})`, arrToResult);   
+          console.log("result = "+result[0].id)
+          const row = result[0].id;
+          if (row === undefined) break;
+          k = row.k;
+          //console.log(`(k, v) = ('${k}'`); 
+        }
+        i++
+      }
+    
+    
     await fastify.db.query(`DEALLOCATE PREPARE _q;`); 
   } catch (err) {
     console.error(err);
