@@ -54,38 +54,32 @@ fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
   let paramsArr = [];
   let sourceMethodArr = [];
   let sourceArr = [];
-  let globalI = 0;
+  let columnsInTable = [];
   for (const table of config.tables) {
     const tableColumnNames: string[] = [];
     table.tableColumns.map((column: any) => {
       tableColumnNames.push(column.columnName);
     });
+    const lenght = tableColumnNames.length
     const whatToSelect = tableColumnNames.join(`", "`);
     for (const column of table.tableColumns) {
       const source: string = column.source;
       const sourceMethod: string = column.sourceMethod;
-      const sourceProps: string = column.columnProps;
+      let params = await getParams(column.multipleProps, column.columnProps);
       await addIndex(table.tableName, whatToSelect);
-      let params = await getParams(column.multipleProps, sourceProps);
+      columnsInTable.push(column)
       paramsArr.push(params);
       sourceMethodArr.push(sourceMethod);
       sourceArr.push(source);
-      console.log(
-        `SELECT "${whatToSelect}" from public."${table.tableName}" LIMIT 100;`
-      );
     }
-    for (let i = 0; i < table.tableColumns.length; i++) {
-      for (let i = 0; i < 500; i++) {
-        const data = await (customFaker as any)[sourceArr[globalI]][
-          sourceMethodArr[globalI]
-        ](paramsArr[globalI]);
-        console.log(data)
-        await Update(table.tableName, whatToSelect, data)
-        return 1
-      }
-      globalI++;
-    }
+    Update(table.tableName,whatToSelect,columnsInTable,lenght)
+    //console.log("data!! = "+dataArr)
+    
   }
+  for(const table of config.tables){
+   
+  }
+  
 }); 
 
 async function getParams(columnMultipleProps: string, sourceProps: string) {
@@ -128,49 +122,68 @@ async function addIndex(tableName: string, columnNames: any) {
 
   await fastify.db.query(
     `
-      CREATE INDEX CONCURRENTLY ON public."${tableName}" ("${columnNames}") WHERE x IS NULL;
+      CREATE INDEX CONCURRENTLY ON public."${tableName}" (id) WHERE x IS NULL;
       `
   );
 }
 
-async function Update(tableName: string, columnNames: any, data:string) {
-  let columnLenght = columnNames.length;
+async function Update(tableName: string, columnNames: any, columnsInTable:any,lenght:number) {
+  //console.log("tableName = "+tableName)
+  //console.log("columnNames = "+columnNames)
+  //console.log("data = "+data)
+  //console.log("Column names = " + columnNames) 
   let params: number[] = []
-  for(let i = 0;i<columnLenght;i++){
-    params[i] = i+1
+  for(let i = 0;i<lenght;i++){
+    params[i] = i+2
   }
   let paramsS = params.join(', $')
   console.log(paramsS)
-  let k = '';
-  let v = 0;
+  let k = ['00000000-0000-0000-0000-000000000000'];
   try {
     await fastify.db.query(`
-      PREPARE _q AS WITH kv AS (
-      SELECT ("${columnNames}")
-      FROM public."${tableName}"
-      WHERE ("${columnNames}") > ($1, $2) AND x IS NULL
-      ORDER BY ("${columnNames}")
-      LIMIT 1
-    ), upd AS (
-      UPDATE public."${tableName}" T
-      SET ("${columnNames}") = ${data},
-      WHERE ("${columnNames}") = (TABLE kv) AND T.x IS NULL 
-      RETURNING ("${columnNames}")
-    ) TABLE upd LIMIT 1;`);
-
+      PREPARE _q AS WITH kv AS ( 
+          SELECT (id)
+          FROM public."${tableName}"
+          WHERE id > ($1) AND x IS NULl
+          ORDER BY (id)
+          LIMIT 1
+        ), upd AS (
+          UPDATE public."${tableName}" T
+          SET ("${columnNames}") = ($${paramsS}), x = 1
+          WHERE id = (SELECT id FROM kv) AND T.x IS NULL
+          RETURNING (id)
+       ) TABLE upd LIMIT 1;
+      `);
+      let i = 0;
     while (true) {
-      const result = await fastify.db.query(`EXECUTE _q($1, $2)`, [k, v]);
-      console.log(result[0])
-      const row = result[0];
-      if (!row) break;
+      const qwe =  await generateData(columnsInTable[0+i],columnsInTable[1],columnsInTable[2]);
+      console.log("data = "+data)
+      let arrToResult:string[] = k.concat(data)
+      const result = await fastify.db.query(`EXECUTE _q($1,$${paramsS})`, arrToResult);   
+      console.log("result = "+result[0].id)
+      const row = result[0].id;
+      if (row === undefined) break;
       k = row.k;
-      v = row.v;
-      console.log(`(k, v) = ('${k}', ${v})`); 
+      //console.log(`(k, v) = ('${k}'`); 
     }
-    await fastify.db.query(`DEALLOCATE PREPARE _q;`);
+    await fastify.db.query(`DEALLOCATE PREPARE _q;`); 
   } catch (err) {
     console.error(err);
   }
+}
+
+
+async function generateData(sourceArr:any,sourceMethodArr:any,paramsArr:any){
+  const data = await (customFaker as any)[sourceArr][
+    sourceMethodArr
+  ](paramsArr);
+  console.log(data)
+  return data
+}
+
+
+async function columnToQuery(columnNames:any){
+  columnNames
 }
 
 async function Update2(){
