@@ -43,111 +43,46 @@ const startProdConnection = async () => {
   }
 };
 
-fastify.get("/test", async (req, reply: FastifyReply) => {
-  try {
-  } catch (err) {
-    process.exit(1);
-  }
-});
-
-fastify.get("/user", async (req: IAnyObject, reply: FastifyReply) => {
-  try {
-    const portionLenght = 10;
-    const rows = await fastify.db.oneOrNone(
-      'SELECT count(*) AS exact_count FROM public."Emergency_Declarers";'
-    );
-    const countOfRequests = rows.exact_count / 100;
-    for (let i = 0; i < countOfRequests; i++) {
-      const request = await fastify.db.manyOrNone(
-        `SELECT "fio", "phone", "contactPhone", "address" 
-      FROM public."Emergency_Declarers" LIMIT $1 OFFSET $2`,
-        [portionLenght, i * portionLenght] //можно количество в env указать
-      );
-      const generatedNames: string[] = await namesGenerator(portionLenght);
-      request.map((item, index) => {
-        item.fio = generatedNames[index]; //Доделать логику с пропуском чела, если следующий в базе он же
-      });
-      console.log(request);
-    }
-    if (rows) {
-      reply.send(1);
-    } else {
-      reply.status(404).send({ message: "User not found" });
-    }
-  } catch (err) {
-    reply.status(500).send(err);
-  }
-});
-
-fastify.get("/stand", async (req: IAnyObject, reply: FastifyReply) => {
-  try {
-    const user = await fastify.db.manyOrNone(
-      `SELECT "fio", "phone", "contactPhone", "address" 
-      FROM public."Emergency_Declarers" LIMIT 10`
-    );
-    if (user) {
-      reply.send(user);
-    } else {
-      reply.status(404).send({ message: "User not found" });
-    }
-  } catch (err) {
-    reply.status(500).send(err);
-  }
-});
-
-// Запуск сервера
-
-fastify.get("/testMethod", async (req: IAnyObject, reply: FastifyReply) => {
-  try {
-    const user = await fastify.db.manyOrNone(
-      `SELECT "fio", "phone", "contactPhone", "address" 
-      FROM public."Emergency_Declarers" LIMIT 10`
-    );
-    console.log(config);
-    const props: IMainGeneratorProps = {
-      name: true,
-      params: {
-        itemsCount: 100,
-      },
-    };
-    const addresses = randAddress({ length: 1, locale: "ru" });
-    if (user) {
-      reply.send(addresses);
-    } else {
-      reply.status(404).send({ message: "User not found" });
-    }
-  } catch (err) {
-    reply.status(500).send(err);
-  }
-});
-
 fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
+  Update2()
   let paramsArr = [];
   let sourceMethodArr = [];
   let sourceArr = [];
+  let globalI = 0;
   for (const table of config.tables) {
-    let dataArr = [];
     const tableColumnNames: string[] = [];
     table.tableColumns.map((column: any) => {
       tableColumnNames.push(column.columnName);
     });
-    const whatToSelect = tableColumnNames.join(", ");
+    const whatToSelect = tableColumnNames.join(`", "`);
     for (const column of table.tableColumns) {
       const source: string = column.source;
       const sourceMethod: string = column.sourceMethod;
       const sourceProps: string = column.columnProps;
-      let params = getParams(column.multipleProps,sourceProps);
-      paramsArr.push(params)
-      sourceMethodArr.push(sourceMethod)
-      sourceArr.push(source)
-      console.log(`SELECT '${whatToSelect}' from public."${table.tableName} LIMIT 100;`)
+      await addIndex(table.tableName, whatToSelect);
+      let params = await getParams(column.multipleProps, sourceProps);
+      paramsArr.push(params);
+      sourceMethodArr.push(sourceMethod);
+      sourceArr.push(source);
+      console.log(
+        `SELECT "${whatToSelect}" from public."${table.tableName}" LIMIT 100;`
+      );
+    }
+    for (let i = 0; i < table.tableColumns.length; i++) {
+      for (let i = 0; i < 500; i++) {
+        const data = await (customFaker as any)[sourceArr[globalI]][
+          sourceMethodArr[globalI]
+        ](paramsArr[globalI]);
+        //console.log(data)
+        //Update(table.tableName, whatToSelect, data)
+        
+      }
+      globalI++;
     }
   }
-  console.log(paramsArr)
-});
+}); 
 
-
-async function getParams(columnMultipleProps:string,sourceProps: string) {
+async function getParams(columnMultipleProps: string, sourceProps: string) {
   let params;
   if (columnMultipleProps === "Yes") {
     params = sourceProps.split(", ").reduce((acc, param) => {
@@ -165,6 +100,110 @@ async function getParams(columnMultipleProps:string,sourceProps: string) {
     }
   }
   return params;
+}
+
+async function addIndex(tableName: string, columnNames: any) {
+  await fastify.db.query(
+    `
+    DO $$ 
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 
+            FROM information_schema.columns 
+            WHERE table_name='${tableName}'
+            AND column_name='x'
+        ) THEN
+            ALTER TABLE public."${tableName}"
+            ADD COLUMN x integer;
+        END IF;
+    END $$;
+    `
+  );
+
+  await fastify.db.query(
+    `
+      CREATE INDEX CONCURRENTLY ON public."${tableName}" ("${columnNames}") WHERE x IS NULL;
+      `
+  );
+}
+
+async function Update(tableName: string, columnNames: any, data:string) {
+  const update = fastify.db.query(
+    `
+    UPDATE public."${tableName}" T
+    SET ("${columnNames}") = (${data}),
+        x = 1
+    WHERE T.x IS NULL
+      AND ("${columnNames}") = (
+        SELECT ("${columnNames}")
+        FROM public."${tableName}"
+        WHERE x IS NULL
+        ORDER BY ("${columnNames}")
+        LIMIT 1
+      )
+    RETURNING "fio", "phone";
+`)
+}
+
+async function Update2(){
+  let k = '';
+  let v = 0;
+
+  try {
+    
+    await fastify.db.query(`PREPARE _q AS WITH kv AS (
+      SELECT k, v
+      FROM tbl
+      WHERE (k, v) > ($1, $2) AND k BETWEEN 'q' AND 'z' AND x IS NULL
+      ORDER BY k, v
+      LIMIT 1
+    ), upd AS (
+      UPDATE tbl T
+      SET x = T.v + 1
+      WHERE (T.k, T.v) = (TABLE kv) AND T.x IS NULL 
+      RETURNING k, v
+    ) TABLE upd LIMIT 1;`);
+
+    while (true) {
+      const result = await fastify.db.query(`EXECUTE _q($1, $2)`, [k, v]);
+      console.log(result[0])
+      const row = result[0];
+      if (!row) break;
+      k = row.k;
+      v = row.v;
+      console.log(`(k, v) = ('${k}', ${v})`); 
+    }
+    await fastify.db.query(`DEALLOCATE PREPARE _q;`);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function arrayToQuery() {
+  let paramsArr = [];
+  let sourceMethodArr = [];
+  let sourceArr = [];
+  for (const table of config.tables) {
+    let dataArr = [];
+    const tableColumnNames: string[] = [];
+    table.tableColumns.map((column: any) => {
+      tableColumnNames.push(column.columnName);
+    });
+    const whatToSelect = tableColumnNames.join(", ");
+    for (const column of table.tableColumns) {
+      const source: string = column.source;
+      const sourceMethod: string = column.sourceMethod;
+      const sourceProps: string = column.columnProps;
+      let params = await getParams(column.multipleProps, sourceProps);
+      paramsArr.push(params);
+      sourceMethodArr.push(sourceMethod);
+      sourceArr.push(source);
+      console.log(
+        `SELECT '${whatToSelect}' from public."${table.tableName} LIMIT 100;`
+      );
+    }
+  }
+  return { paramsArr, sourceMethodArr, sourceArr };
 }
 
 async function generateAddress() {
