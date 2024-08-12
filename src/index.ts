@@ -20,6 +20,13 @@ const format = require("pg-format");
 const fs = require("fs");
 import { v4 as uuidv4 } from "uuid";
 import { Column } from "pg-promise";
+import { stringify } from "querystring";
+
+
+
+let globalFlag = false;
+
+
 
 let config: any;
 fs.readFile("./tables.json", "utf8", function (err: any, data: any) {
@@ -44,7 +51,6 @@ const startProdConnection = async () => {
 };
 
 fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
-  Update2()
   let paramsArr = [];
   let sourceMethodArr = [];
   let sourceArr = [];
@@ -73,9 +79,9 @@ fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
         const data = await (customFaker as any)[sourceArr[globalI]][
           sourceMethodArr[globalI]
         ](paramsArr[globalI]);
-        //console.log(data)
-        //Update(table.tableName, whatToSelect, data)
-        
+        console.log(data)
+        await Update(table.tableName, whatToSelect, data)
+        return 1
       }
       globalI++;
     }
@@ -128,21 +134,43 @@ async function addIndex(tableName: string, columnNames: any) {
 }
 
 async function Update(tableName: string, columnNames: any, data:string) {
-  const update = fastify.db.query(
-    `
-    UPDATE public."${tableName}" T
-    SET ("${columnNames}") = (${data}),
-        x = 1
-    WHERE T.x IS NULL
-      AND ("${columnNames}") = (
-        SELECT ("${columnNames}")
-        FROM public."${tableName}"
-        WHERE x IS NULL
-        ORDER BY ("${columnNames}")
-        LIMIT 1
-      )
-    RETURNING "fio", "phone";
-`)
+  let columnLenght = columnNames.length;
+  let params: number[] = []
+  for(let i = 0;i<columnLenght;i++){
+    params[i] = i+1
+  }
+  let paramsS = params.join(', $')
+  console.log(paramsS)
+  let k = '';
+  let v = 0;
+  try {
+    await fastify.db.query(`
+      PREPARE _q AS WITH kv AS (
+      SELECT ("${columnNames}")
+      FROM public."${tableName}"
+      WHERE ("${columnNames}") > ($1, $2) AND x IS NULL
+      ORDER BY ("${columnNames}")
+      LIMIT 1
+    ), upd AS (
+      UPDATE public."${tableName}" T
+      SET ("${columnNames}") = ${data},
+      WHERE ("${columnNames}") = (TABLE kv) AND T.x IS NULL 
+      RETURNING ("${columnNames}")
+    ) TABLE upd LIMIT 1;`);
+
+    while (true) {
+      const result = await fastify.db.query(`EXECUTE _q($1, $2)`, [k, v]);
+      console.log(result[0])
+      const row = result[0];
+      if (!row) break;
+      k = row.k;
+      v = row.v;
+      console.log(`(k, v) = ('${k}', ${v})`); 
+    }
+    await fastify.db.query(`DEALLOCATE PREPARE _q;`);
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 async function Update2(){
@@ -150,7 +178,6 @@ async function Update2(){
   let v = 0;
 
   try {
-    
     await fastify.db.query(`PREPARE _q AS WITH kv AS (
       SELECT k, v
       FROM tbl
