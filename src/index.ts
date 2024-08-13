@@ -118,7 +118,7 @@ async function addIndex(tableName: string, columnNames: any) {
 
   await fastify.db.query(
     `
-      CREATE INDEX CONCURRENTLY ON public."${tableName}" (id) WHERE x IS NULL;
+      CREATE INDEX CONCURRENTLY ON public."${tableName}" ("${columnNames}") WHERE x IS NULL;
       `
   );
 }
@@ -133,21 +133,21 @@ async function Update(tableName: string, columnNames: any, columnsInTable:any,le
   try {
     await fastify.db.query(`
       PREPARE _q AS WITH kv AS ( 
-          SELECT (id)
+          SELECT id,("${columnNames}")
           FROM public."${tableName}"
-          WHERE id > ($1) AND x IS NULl
+          WHERE id > ($1) AND x IS NULL
           ORDER BY (id)
           LIMIT 1
         ), upd AS (
           UPDATE public."${tableName}" T
           SET ("${columnNames}") = ($${paramsS}), x = 1
           WHERE id = (SELECT id FROM kv) AND T.x IS NULL 
-          RETURNING id
+          RETURNING id, ("${columnNames}")
        ) TABLE upd LIMIT 1;
       `);
         while (true) {
           let dataToPush:string[] = [] 
-          for(const column of columnsInTable){
+          for(const column of columnsInTable){ 
             const source: string = column.source;
             const sourceMethod: string = column.sourceMethod;
             let params = await getParams(column.multipleProps, column.columnProps);
@@ -157,11 +157,12 @@ async function Update(tableName: string, columnNames: any, columnsInTable:any,le
           }
           let arrToResult = await k.concat(dataToPush)
           const result = await fastify.db.query(`EXECUTE _q($1,$${paramsS})`, arrToResult);
-          if (result.length === 0) {
+          //console.log(result)
+          //console.log(result[0].id)
+          if (result.length === 0 || result[0].id === undefined) { 
             break;
           }
-          if (result[0].id === undefined) break;
-          const row = result[0].id;
+          const row = result[0].id; 
           k[0] = row;
         }
         
