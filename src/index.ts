@@ -51,11 +51,13 @@ const startProdConnection = async () => {
 };
 
 fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
-  let paramsArr = [];
-  let sourceMethodArr = [];
-  let sourceArr = [];
-  let columnsInTable = [];
+  
+  
   for (const table of config.tables) {
+    let paramsArr = [];
+    let sourceMethodArr = [];
+    let sourceArr = [];
+    let columnsInTable = [];
     const tableColumnNames: string[] = [];
     table.tableColumns.map((column: any) => {
       tableColumnNames.push(column.columnName);
@@ -72,7 +74,7 @@ fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
       sourceMethodArr.push(sourceMethod);
       sourceArr.push(source);
     }
-    Update(table.tableName,whatToSelect,columnsInTable,lenght)
+    await Update(table.tableName,whatToSelect,columnsInTable,lenght)
     //console.log("data!! = "+dataArr)
     
   }
@@ -132,7 +134,7 @@ async function Update(tableName: string, columnNames: any, columnsInTable:any,le
   //console.log("columnNames = "+columnNames)
   //console.log("data = "+data)
   //console.log("Column names = " + columnNames) 
-  let params: number[] = []
+  let params: number[] = await []
   for(let i = 0;i<lenght;i++){
     params[i] = i+2
   }
@@ -150,28 +152,36 @@ async function Update(tableName: string, columnNames: any, columnsInTable:any,le
         ), upd AS (
           UPDATE public."${tableName}" T
           SET ("${columnNames}") = ($${paramsS}), x = 1
-          WHERE id = (SELECT id FROM kv) AND T.x IS NULL
-          RETURNING (id)
+          WHERE id = (SELECT id FROM kv) AND T.x IS NULL 
+          RETURNING id
        ) TABLE upd LIMIT 1;
       `);
       
-      for(const column of columnsInTable){
-        let i = 0;
+      
         while (true) {
-          const data =  await generateData(columnsInTable[0+i],columnsInTable[1+i],columnsInTable[2+i]);
-          console.log("data = "+ data)
-          let arrToResult:string[] = k.concat(data)
-          const result = await fastify.db.query(`EXECUTE _q($1,$${paramsS})`, arrToResult);   
-          console.log("result = "+result[0].id)
+          console.log("HERE!!!")
+          let dataToPush:string[] = []
+          for(const column of columnsInTable){
+            const source: string = column.source;
+            const sourceMethod: string = column.sourceMethod;
+            let params = await getParams(column.multipleProps, column.columnProps);
+            const data =  await generateData(source,sourceMethod,params);
+            dataToPush.push(data)
+          }
+          let arrToResult = await k.concat(dataToPush)
+          console.log("ArrLength = " + arrToResult)
+
+          const result = await fastify.db.query(`EXECUTE _q($1,$${paramsS})`, arrToResult);
+          console.log("AfterCheck!")  
+          if (result.length === 0) {
+            break;
+          }
+          if (result[0].id === undefined) break;
           const row = result[0].id;
-          if (row === undefined) break;
-          k = row.k;
+          k[0] = row;
           //console.log(`(k, v) = ('${k}'`); 
         }
-        i++
-      }
-    
-    
+        
     await fastify.db.query(`DEALLOCATE PREPARE _q;`); 
   } catch (err) {
     console.error(err);
