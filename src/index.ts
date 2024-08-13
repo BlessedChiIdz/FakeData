@@ -54,9 +54,6 @@ fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
   
   
   for (const table of config.tables) {
-    let paramsArr = [];
-    let sourceMethodArr = [];
-    let sourceArr = [];
     let columnsInTable = [];
     const tableColumnNames: string[] = [];
     table.tableColumns.map((column: any) => {
@@ -70,12 +67,9 @@ fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
       let params = await getParams(column.multipleProps, column.columnProps);
       await addIndex(table.tableName, whatToSelect);
       columnsInTable.push(column)
-      paramsArr.push(params);
-      sourceMethodArr.push(sourceMethod);
-      sourceArr.push(source);
+
     }
     await Update(table.tableName,whatToSelect,columnsInTable,lenght)
-    //console.log("data!! = "+dataArr)
     
   }
   for(const table of config.tables){
@@ -130,16 +124,11 @@ async function addIndex(tableName: string, columnNames: any) {
 }
 
 async function Update(tableName: string, columnNames: any, columnsInTable:any,lenght:number) {
-  //console.log("tableName = "+tableName)
-  //console.log("columnNames = "+columnNames)
-  //console.log("data = "+data)
-  //console.log("Column names = " + columnNames) 
   let params: number[] = await []
   for(let i = 0;i<lenght;i++){
     params[i] = i+2
   }
   let paramsS = params.join(', $')
-  console.log(paramsS)
   let k = ['00000000-0000-0000-0000-000000000000'];
   try {
     await fastify.db.query(`
@@ -156,30 +145,24 @@ async function Update(tableName: string, columnNames: any, columnsInTable:any,le
           RETURNING id
        ) TABLE upd LIMIT 1;
       `);
-      
-      
         while (true) {
-          console.log("HERE!!!")
-          let dataToPush:string[] = []
+          let dataToPush:string[] = [] 
           for(const column of columnsInTable){
             const source: string = column.source;
             const sourceMethod: string = column.sourceMethod;
             let params = await getParams(column.multipleProps, column.columnProps);
-            const data =  await generateData(source,sourceMethod,params);
+            const mutateData = column.mutateGeneration;
+            const data =  await generateData(source,sourceMethod,params,mutateData);
             dataToPush.push(data)
           }
           let arrToResult = await k.concat(dataToPush)
-          console.log("ArrLength = " + arrToResult)
-
           const result = await fastify.db.query(`EXECUTE _q($1,$${paramsS})`, arrToResult);
-          console.log("AfterCheck!")  
           if (result.length === 0) {
             break;
           }
           if (result[0].id === undefined) break;
           const row = result[0].id;
           k[0] = row;
-          //console.log(`(k, v) = ('${k}'`); 
         }
         
     await fastify.db.query(`DEALLOCATE PREPARE _q;`); 
@@ -189,11 +172,17 @@ async function Update(tableName: string, columnNames: any, columnsInTable:any,le
 }
 
 
-async function generateData(sourceArr:any,sourceMethodArr:any,paramsArr:any){
-  const data = await (customFaker as any)[sourceArr][
+async function generateData(sourceArr:any,sourceMethodArr:any,paramsArr:any,mutateData:string){
+  let data = await (customFaker as any)[sourceArr][
     sourceMethodArr
   ](paramsArr);
-  console.log(data)
+  switch (mutateData){
+    case "phoneSeven":
+      data = data.toString()
+      data = data.replace('8','+7')
+      break
+  } 
+    
   return data
 }
 
@@ -235,7 +224,7 @@ async function Update2(){
   }
 }
 
-async function arrayToQuery() {
+async function arrayToQuery() { 89137190734
   let paramsArr = [];
   let sourceMethodArr = [];
   let sourceArr = [];
