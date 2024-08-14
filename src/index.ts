@@ -57,9 +57,6 @@ fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
     const lenght = tableColumnNames.length;
     const whatToSelect = tableColumnNames.join(`", "`);
     for (const column of table.tableColumns) {
-      const source: string = column.source;
-      const sourceMethod: string = column.sourceMethod;
-      let params = await getParams(column.multipleProps, column.columnProps);
       await addIndex(table.tableName, whatToSelect);
       columnsInTable.push(column);
     }
@@ -107,11 +104,11 @@ async function addIndex(tableName: string, columnNames: any) {
     `
   );
 
-  await fastify.db.query(
-    `
-      CREATE INDEX CONCURRENTLY ON public."${tableName}" ("${columnNames}") WHERE x IS NULL;
-      `
-  );
+  // await fastify.db.query(
+  //   `
+  //     CREATE INDEX CONCURRENTLY ON public."${tableName}" ("${columnNames}") WHERE x IS NULL;
+  //     `
+  // );
 }
 
 async function Update(
@@ -126,7 +123,7 @@ async function Update(
     params[i] = i + 2;
   }
   let paramsS = params.join(", $"); //формирует количество параметров,выдает например 1, $2, $3
-  let k = ["00000000-0000-0000-0000-000000000000"];
+  
   try {
     let request = await fastify.db.query(`
       SELECT "${columnNames}"
@@ -135,14 +132,14 @@ async function Update(
       LIMIT 1
       `);
     let rowBeforeUpdate: string[] = Object.values(request[0]);
-    let rowBeforeString:string = await rowBeforeUpdate.join(","); 
-    //console.log("FirstRequest = ", rowBeforeUpdate);
+    let k = ["00000000-0000-0000-0000-000000000000"];
+    console.log("FirstRequest = ", request[0]);
     await fastify.db.query(`
       PREPARE _q AS WITH kv AS (
           SELECT id,"${columnNames}"
           FROM public."${tableName}"
           WHERE id > ($1) AND x IS NULL
-          ORDER BY (id)
+          ORDER BY (id) 
           LIMIT 1
         ), upd AS (
           UPDATE public."${tableName}" T
@@ -150,9 +147,9 @@ async function Update(
           WHERE id = (SELECT id FROM kv) AND T.x IS NULL 
           RETURNING id, (Select CONCAT("${columnNamesConcat}") from kv) as old
        ) TABLE upd LIMIT 1;
-      `);
-    while (true) {
-      rowBeforeString = await rowBeforeUpdate.join(","); 
+      `); 
+    while (true) {  
+      let rowBeforeString:string =  rowBeforeUpdate.join(","); 
       let dataToPush: string[] = []; //массив с данными для одной строки
       for (const column of columnsInTable) {
         const source: string = column.source;
@@ -172,27 +169,28 @@ async function Update(
       
       await checkMap(rowAsArray, dataToPush);
 
-      let arrToResult = await k.concat(dataToPush);
+      let arrToResult = k.concat(dataToPush);
       const result = await fastify.db.manyOrNone(
         `EXECUTE _q($1,$${paramsS})`,
         arrToResult
       );
-      if (result.length === 0 || result[0].id === undefined) {
+      if (result.length === 0 || result[0].id === undefined) { 
         break;
       }
       rowBeforeUpdate = result[0].old.split("newWord");
+      console.log(result[0])
       //console.log("RowBeforeUpdate = " + rowBeforeUpdate);
       const row = result[0].id;
+      console.log(row)
       k[0] = row;
     }
-
     await fastify.db.query(`DEALLOCATE PREPARE _q;`); 
   } catch (err) {
     console.error(err);
   }
 }
 
-async function generateData(
+async function generateData( 
   sourceArr: any,
   sourceMethodArr: any,
   paramsArr: any,
@@ -223,13 +221,6 @@ async function checkMap(keys: any[], datas: any[]): Promise<boolean> {
   return false;
 }
 
-async function mutateMap(row: any[], datas: any[]): Promise<string[]> {
-  for (let i = 0; i < datas.length; i++) { 
-    if (globalMap.has(datas[i])) {
-    }
-  }
-  return ["1"];
-}
 
 async function arrayToQuery() {
   89137190734;
