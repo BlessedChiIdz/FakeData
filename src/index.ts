@@ -39,7 +39,7 @@ fastify.register(fastifyPlaginProd);
 
 const startProdConnection = async () => {
   try {
-    await fastify.listen(3002);
+    await fastify.listen(3003);
     fastify.log.info(`Server listening on ${fastify.server.address()}`);
   } catch (err) {
     fastify.log.error(err);
@@ -128,12 +128,13 @@ async function Update(
   let paramsS = params.join(", $");
   let k = ["00000000-0000-0000-0000-000000000000"];
   try {
-    let rowBeforeUpdate = await fastify.db.query(`
+    let request = await fastify.db.query(`
       SELECT "${columnNames}"
       FROM public."${tableName}"
       ORDER BY (id)
       LIMIT 1
       `);
+    let rowBeforeUpdate = Object.values(request);
     await fastify.db.query(`
       PREPARE _q AS WITH kv AS (
           SELECT id,"${columnNames}"
@@ -163,12 +164,8 @@ async function Update(
         );
         dataToPush.push(data);
       }
-      if (await checkMap(rowBeforeUpdate,dataToPush)) {
-        
-      } else {
-        addHashToMap(rowBeforeUpdate[0], dataToPush);
-      }
-
+      await checkMap(rowBeforeUpdate,dataToPush)
+      
       let arrToResult = await k.concat(dataToPush);
       const result = await fastify.db.manyOrNone(
         `EXECUTE _q($1,$${paramsS})`,
@@ -200,35 +197,22 @@ async function generateData(
     case "phoneSeven":
       data = data.toString();
       data = data.replace("8", "+7");
-
       break;
   }
   return data;
 }
 
-async function addHashToMap(keys: any[], datas: any[]): Promise<void> {
-  //console.log("ADDTOHASH");
-  // console.log(keys)
-  //  console.log(datas)
-  let i = 0;
-  for (const key in keys) {
-    globalMap.set(key, datas[i]);
-    i++;
-  }
-  // console.log("ENDTOHASH");
-}
-
 
 async function checkMap(keys: any[],datas:any[]): Promise<boolean> {
+  const keyObj = keys[0];
   console.log(keys);
-  console.log(datas)
-  const arrReturn = [];
-  let whatInCash = []
+  console.log(datas);
   let i = 0;
-  for (const key in keys[0]) {
+  for (const key in keyObj) {
     if (globalMap.has(key)) {
       console.log("TRUE");
-      arrReturn.push(globalMap.get(key))
+      //arrReturn.push(globalMap.get(key)) 
+      datas[i] = globalMap.get(key)
     } else {
       console.log("FALSE");
       console.log(key)
@@ -250,42 +234,7 @@ async function mutateMap(row: any[], datas: any[]): Promise<string[]> {
   return ["1"];
 }
 
-async function columnToQuery(columnNames: any) {
-  columnNames;
-}
 
-async function Update2() {
-  let k = "";
-  let v = 0;
-
-  try {
-    await fastify.db.query(`PREPARE _q AS WITH kv AS (
-      SELECT k, v
-      FROM tbl
-      WHERE (k, v) > ($1, $2) AND k BETWEEN 'q' AND 'z' AND x IS NULL
-      ORDER BY k, v
-      LIMIT 1
-    ), upd AS (
-      UPDATE tbl T
-      SET x = T.v + 1
-      WHERE (T.k, T.v) = (TABLE kv) AND T.x IS NULL 
-      RETURNING k, v
-    ) TABLE upd LIMIT 1;`);
-
-    while (true) {
-      const result = await fastify.db.query(`EXECUTE _q($1, $2)`, [k, v]);
-      console.log(result[0]);
-      const row = result[0];
-      if (!row) break;
-      k = row.k;
-      v = row.v;
-      console.log(`(k, v) = ('${k}', ${v})`);
-    }
-    await fastify.db.query(`DEALLOCATE PREPARE _q;`);
-  } catch (err) {
-    console.error(err);
-  }
-}
 
 async function arrayToQuery() {
   89137190734;
