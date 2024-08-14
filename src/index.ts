@@ -1,30 +1,14 @@
 import Fastify, { FastifyInstance, FastifyReply } from "fastify";
 import { IAnyObject } from "./interfaces/IAnyObject";
-import { randAddress, randFullName } from "@ngneat/falso";
-import { IMainGeneratorProps } from "./interfaces/IMainGeneratorProps";
-import { mainGenerator } from "./logicComponents/generatorOld/mainGenerator";
-import { namesGenerator } from "./logicComponents/generatorOld/namesGenerator";
-import { addressGenerator } from "./logicComponents/generatorOld/addressGenerator";
 import { fastifyPlaginProd } from "./plugins/bg/db";
-import { startLocal } from "./secondConnection";
-import { userInfo } from "os";
-import { tablesToModify } from "./constants/tables";
-import { error } from "console";
-import { Limit } from "./constants/generateConstants";
-import { mapTranslateFunctionName } from "./logicComponents/translate/EngToRuGoogle";
-import i18next from "i18next";
 import { customFaker } from "./logicComponents/Faker/faker";
-import { fa, Faker } from "@faker-js/faker";
 import { IAddress } from "./interfaces/IAddress1";
 const format = require("pg-format");
 const fs = require("fs");
 import { v4 as uuidv4 } from "uuid";
-import { Column } from "pg-promise";
-import { stringify } from "querystring";
-import { glob } from "fs";
 
 let globalMap = new Map();
-
+let flag = false;
 let config: any;
 fs.readFile("./tables.json", "utf8", function (err: any, data: any) {
   if (err) throw err;
@@ -133,7 +117,6 @@ async function Update(
       `);
     let rowBeforeUpdate: string[] = Object.values(request[0]);
     let k = ["00000000-0000-0000-0000-000000000000"];
-    console.log("FirstRequest = ", request[0]);
     await fastify.db.query(`
       PREPARE _q AS WITH kv AS (
           SELECT id,"${columnNames}"
@@ -141,14 +124,23 @@ async function Update(
           WHERE id > ($1) AND x IS NULL
           ORDER BY (id) 
           LIMIT 1
-        ), upd AS (
+        ),
+        sel AS (
+          SELECT "${columnNames}"
+          FROM public."${tableName}"
+          WHERE id > ($1) AND x IS NULL
+          ORDER BY (id)
+          OFFSET 1
+          LIMIT 1
+        )
+        , upd AS (
           UPDATE public."${tableName}" T
           SET ("${columnNames}") = ($${paramsS}), x = 1
           WHERE id = (SELECT id FROM kv) AND T.x IS NULL 
-          RETURNING id, (Select CONCAT("${columnNamesConcat}") from kv) as old
+          RETURNING id, (Select CONCAT("${columnNamesConcat}") from sel) as old
        ) TABLE upd LIMIT 1;
       `); 
-    while (true) {  
+    while (true) {
       let rowBeforeString:string =  rowBeforeUpdate.join(","); 
       let dataToPush: string[] = []; //массив с данными для одной строки
       for (const column of columnsInTable) {
@@ -164,24 +156,21 @@ async function Update(
         );
         dataToPush.push(data); //заполнение массива с данными для одной строки
       }
-      console.log("ROWKA = "+rowBeforeString)
-      const rowAsArray = rowBeforeString.split(',')
+      rowBeforeUpdate = rowBeforeString.split(',') 
       
-      await checkMap(rowAsArray, dataToPush);
-
+      await checkMap(rowBeforeUpdate, dataToPush);
+      console.log("NEXTCHECK")
       let arrToResult = k.concat(dataToPush);
       const result = await fastify.db.manyOrNone(
         `EXECUTE _q($1,$${paramsS})`,
         arrToResult
       );
-      if (result.length === 0 || result[0].id === undefined) { 
+      if (result.length === 0 || result[0].id === undefined || result[0].old === null) { 
         break;
       }
+      
       rowBeforeUpdate = result[0].old.split("newWord");
-      console.log(result[0])
-      //console.log("RowBeforeUpdate = " + rowBeforeUpdate);
       const row = result[0].id;
-      console.log(row)
       k[0] = row;
     }
     await fastify.db.query(`DEALLOCATE PREPARE _q;`); 
@@ -209,14 +198,14 @@ async function generateData(
 
 async function checkMap(keys: any[], datas: any[]): Promise<boolean> {
   console.log(keys)
-  let i = 0;
-  for (const key in keys) {
-    if (globalMap.has(keys[key])) {
-      datas[i] = globalMap.get(keys[key]);
+  console.log(datas)
+  for (let i = 0;i<keys.length;i++) {
+    if (globalMap.has(keys[i])) {
+      console.log("YES")
+      datas[i] = globalMap.get(keys[i]);
     } else {
-      globalMap.set(keys[key], datas[i]);
+      globalMap.set(keys[i], datas[i]);
     }
-    i++;
   }
   return false;
 }
@@ -242,9 +231,9 @@ async function arrayToQuery() {
       paramsArr.push(params);
       sourceMethodArr.push(sourceMethod);
       sourceArr.push(source);
-      console.log(
-        `SELECT '${whatToSelect}' from public."${table.tableName} LIMIT 100;`
-      );
+      // console.log(
+      //   `SELECT '${whatToSelect}' from public."${table.tableName} LIMIT 100;`
+      // );
     }
   }
   return { paramsArr, sourceMethodArr, sourceArr };
