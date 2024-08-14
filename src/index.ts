@@ -51,7 +51,7 @@ fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
   for (const table of config.tables) {
     let columnsInTable = [];
     const tableColumnNames: string[] = [];
-    table.tableColumns.map((column: any) => {
+    table.tableColumns.map((column: any) => { 
       tableColumnNames.push(column.columnName);
     });
     const lenght = tableColumnNames.length;
@@ -115,12 +115,16 @@ async function addIndex(tableName: string, columnNames: any) {
 }
 
 async function Update(
-  tableName: string,
-  columnNames: any,
+  tableName: string, // название таблицы для обновления
+  columnNames: any, // названия колонок сджоеные в строку например  " fio", "phone", "contactPhone "
   columnsInTable: any,
   lenght: number
 ) {
+  console.log(tableName)
+  console.log("columnNames = "+columnNames)
+  console.log(columnsInTable)
   const columnNamesConcat = columnNames.replaceAll(",", ",'newWord',");
+  console.log("columnNamesConcat = "+columnNamesConcat)
   let params: number[] = await [];
   for (let i = 0; i < lenght; i++) {
     params[i] = i + 2;
@@ -205,18 +209,19 @@ async function generateData(
 
 async function checkMap(keys: any[],datas:any[]): Promise<boolean> {
   const keyObj = keys[0];
-  console.log(keys);
-  console.log(datas);
+  //console.log(keyObj);
+  //console.log(datas);
   let i = 0;
-  for (const key in keyObj) {
+  for (const key in keyObj) {   // массив переделать
     if (globalMap.has(key)) {
-      console.log("TRUE");
+      //console.log("TRUE");
+      //console.log(key)
       //arrReturn.push(globalMap.get(key)) 
       datas[i] = globalMap.get(key)
     } else {
-      console.log("FALSE");
-      console.log(key)
-      console.log(datas[i])
+      //console.log("FALSE");
+      //console.log(key)
+      //console.log(datas[i])
       globalMap.set(key,datas[i])
     }
     i++;
@@ -225,8 +230,8 @@ async function checkMap(keys: any[],datas:any[]): Promise<boolean> {
 }
 
 async function mutateMap(row: any[], datas: any[]): Promise<string[]> {
-  console.log(row);
-  console.log(datas);
+  //console.log(row);
+  //console.log(datas);
   for (let i = 0; i < datas.length; i++) {
     if (globalMap.has(datas[i])) {
     }
