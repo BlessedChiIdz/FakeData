@@ -23,7 +23,7 @@
                     "columnName":"contactPhone",
                     "source": "number",
                     "sourceMethod": "int",
-                    "columnProps" : "min:81137190734, max:89137190734",
+                    "columnProps" : "min:81137190734, max:89137190734", 
                     "multipleProps":"Yes"
                 }
             ]
@@ -47,6 +47,6 @@
         }
     ],
     "config":{
-
+        
     }
 }

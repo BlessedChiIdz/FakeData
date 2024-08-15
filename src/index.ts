@@ -2,13 +2,9 @@ import Fastify, { FastifyInstance, FastifyReply } from "fastify";
 import { IAnyObject } from "./interfaces/IAnyObject";
 import { fastifyPlaginProd } from "./plugins/bg/db";
 import { customFaker } from "./logicComponents/Faker/faker";
-import { IAddress } from "./interfaces/IAddress1";
-const format = require("pg-format");
 const fs = require("fs");
-import { v4 as uuidv4 } from "uuid";
 
 let globalMap = new Map();
-let flag = false;
 let config: any;
 fs.readFile("./tables.json", "utf8", function (err: any, data: any) {
   if (err) throw err;
@@ -16,10 +12,9 @@ fs.readFile("./tables.json", "utf8", function (err: any, data: any) {
 });
 
 const fastify: FastifyInstance = Fastify({ logger: true });
-const faker = customFaker;
 
 // Регистрация плагина для подключения к базе данных
-fastify.register(fastifyPlaginProd);
+fastify.register(fastifyPlaginProd); 
 
 const startProdConnection = async () => {
   try {
@@ -88,16 +83,16 @@ async function addIndex(tableName: string, columnNames: any) {
     `
   );
 
-  // await fastify.db.query(
-  //   `
-  //     CREATE INDEX CONCURRENTLY ON public."${tableName}" ("${columnNames}") WHERE x IS NULL;
-  //     `
-  // );
+  await fastify.db.query(
+    `
+      CREATE INDEX CONCURRENTLY ON public."${tableName}" ("${columnNames}") WHERE x IS NULL;
+      `
+  );
 }
 
 async function Update(
   tableName: string, // название таблицы для обновления
-  columnNames: any, // названия колонок сджоеные в строку например  " fio", "phone", "contactPhone "
+  columnNames: any, // названия колонок сджоеные в строку например  " fio", "phone", "contactPhone " 
   columnsInTable: any,
   lenght: number
 ) {
@@ -200,6 +195,10 @@ async function checkMap(keys: any[], datas: any[]): Promise<boolean> {
   console.log(keys)
   console.log(datas)
   for (let i = 0;i<keys.length;i++) {
+    if(keys[i]=== ''){
+      datas[i] = ''
+      continue
+    }
     if (globalMap.has(keys[i])) {
       console.log("YES")
       datas[i] = globalMap.get(keys[i]);
@@ -210,41 +209,5 @@ async function checkMap(keys: any[], datas: any[]): Promise<boolean> {
   return false;
 }
 
-
-async function arrayToQuery() {
-  89137190734;
-  let paramsArr = [];
-  let sourceMethodArr = [];
-  let sourceArr = [];
-  for (const table of config.tables) {
-    let dataArr = [];
-    const tableColumnNames: string[] = [];
-    table.tableColumns.map((column: any) => {
-      tableColumnNames.push(column.columnName);
-    });
-    const whatToSelect = tableColumnNames.join(", ");
-    for (const column of table.tableColumns) {
-      const source: string = column.source;
-      const sourceMethod: string = column.sourceMethod;
-      const sourceProps: string = column.columnProps;
-      let params = await getParams(column.multipleProps, sourceProps);
-      paramsArr.push(params);
-      sourceMethodArr.push(sourceMethod);
-      sourceArr.push(source);
-      // console.log(
-      //   `SELECT '${whatToSelect}' from public."${table.tableName} LIMIT 100;`
-      // );
-    }
-  }
-  return { paramsArr, sourceMethodArr, sourceArr };
-}
-
-async function generateAddress() {
-  const address: IAddress = {
-    uuid: uuidv4(),
-    oktmo: faker.location.zipCode(),
-    region: faker.location.state(),
-  };
-}
 
 startProdConnection();
