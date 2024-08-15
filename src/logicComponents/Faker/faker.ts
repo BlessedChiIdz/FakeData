@@ -9,5 +9,5 @@ import { base, en,  faker,  Faker, ru } from '@faker-js/faker';
 
 
 export const customFaker:Faker = new Faker({
-  locale: [ru, en, base],
+  locale: [ru],
 });

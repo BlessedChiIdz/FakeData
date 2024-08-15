@@ -28,20 +28,18 @@ const startProdConnection = async () => {
 
 fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
   for (const table of config.tables) {
-    let columnsInTable = [];
+    let columnsInTable:string[] = [];
     const tableColumnNames: string[] = [];
     table.tableColumns.map((column: any) => {
       tableColumnNames.push(column.columnName);
     });
-    const lenght = tableColumnNames.length;
-    const whatToSelect = tableColumnNames.join(`", "`);
+    const lenght:number = tableColumnNames.length;
+    const whatToSelect:string = tableColumnNames.join(`", "`);
     for (const column of table.tableColumns) {
       await addIndex(table.tableName, whatToSelect);
       columnsInTable.push(column);
     }
     await Update(table.tableName, whatToSelect, columnsInTable, lenght);
-  }
-  for (const table of config.tables) {
   }
 });
 
@@ -65,7 +63,11 @@ async function getParams(columnMultipleProps: string, sourceProps: string) {
   return params;
 }
 
+
+
+
 async function addIndex(tableName: string, columnNames: any) {
+  //Добавляю новую колонку - x, чтобы тслеживать какие данные изменились при кофускации и не пропустил ли метод что-то.
   await fastify.db.query(
     `
     DO $$ 
@@ -82,7 +84,7 @@ async function addIndex(tableName: string, columnNames: any) {
     END $$;
     `
   );
-
+  //TODO посмотреть быстрее ли заработает программа на больших таблицах
   await fastify.db.query(
     `
       CREATE INDEX CONCURRENTLY ON public."${tableName}" ("${columnNames}") WHERE x IS NULL;
@@ -92,16 +94,17 @@ async function addIndex(tableName: string, columnNames: any) {
 
 async function Update(
   tableName: string, // название таблицы для обновления
-  columnNames: any, // названия колонок сджоеные в строку например  " fio", "phone", "contactPhone " 
-  columnsInTable: any,
-  lenght: number
+  columnNames: any, // названия колонок сджоеных в строку например,  " fio", "phone", "contactPhone " 
+  columnsInTable: any, // содержимое колонок json объекта
+  lenght: number // сколько колонок будет в методе
 ) {
-  const columnNamesConcat = columnNames.replaceAll(",", ",'newWord',");
+  console.log(tableName)
+  const columnNamesConcat = columnNames.replaceAll(",", ",'newWord',"); // слова, вернувшиеся из запроса будут строкой, разделенные newWord, например 'AnyanewWord1975' - anya 1975
   let params: number[] = await [];
   for (let i = 0; i < lenght; i++) {
-    params[i] = i + 2;
+    params[i] = i + 2;        //формирует количество параметров,выдает например 1, $2, $3
   }
-  let paramsS = params.join(", $"); //формирует количество параметров,выдает например 1, $2, $3
+  let paramsS = params.join(", $"); 
   
   try {
     let request = await fastify.db.query(`
@@ -110,8 +113,9 @@ async function Update(
       ORDER BY (id)
       LIMIT 1
       `);
-    let rowBeforeUpdate: string[] = Object.values(request[0]);
+    let rowBeforeUpdate: string[] = Object.values(request[0]); //Первый объект в таблице(orderBy id).
     let k = ["00000000-0000-0000-0000-000000000000"];
+    await fastify.db.query(`DEALLOCATE PREPARE all;`);
     await fastify.db.query(`
       PREPARE _q AS WITH kv AS (
           SELECT id,"${columnNames}"
@@ -129,16 +133,20 @@ async function Update(
           LIMIT 1
         )
         , upd AS (
-          UPDATE public."${tableName}" T
-          SET ("${columnNames}") = ($${paramsS}), x = 1
+          UPDATE public."${tableName}" T 
+          ${lenght === 1 ? 
+            `SET "${columnNames}" = $${paramsS}`
+            : 
+            `SET ("${columnNames}") = ($${paramsS})` 
+          }
+          , x = 1 
           WHERE id = (SELECT id FROM kv) AND T.x IS NULL 
           RETURNING id, (Select CONCAT("${columnNamesConcat}") from sel) as old
        ) TABLE upd LIMIT 1;
       `); 
     while (true) {
-      let rowBeforeString:string =  rowBeforeUpdate.join(","); 
       let dataToPush: string[] = []; //массив с данными для одной строки
-      for (const column of columnsInTable) {
+      for (const column of columnsInTable) { // заполнение dataToPush
         const source: string = column.source;
         const sourceMethod: string = column.sourceMethod;
         let params = await getParams(column.multipleProps, column.columnProps);
@@ -151,16 +159,14 @@ async function Update(
         );
         dataToPush.push(data); //заполнение массива с данными для одной строки
       }
-      rowBeforeUpdate = rowBeforeString.split(',') 
       
       await checkMap(rowBeforeUpdate, dataToPush);
-      console.log("NEXTCHECK")
-      let arrToResult = k.concat(dataToPush);
+      let arrToResult:string[] = k.concat(dataToPush);  //?
       const result = await fastify.db.manyOrNone(
         `EXECUTE _q($1,$${paramsS})`,
         arrToResult
       );
-      if (result.length === 0 || result[0].id === undefined || result[0].old === null) { 
+      if (result.length === 0 || result[0].id === undefined || result[0].old === null) {
         break;
       }
       
@@ -168,7 +174,7 @@ async function Update(
       const row = result[0].id;
       k[0] = row;
     }
-    await fastify.db.query(`DEALLOCATE PREPARE _q;`); 
+    await fastify.db.query(`DEALLOCATE PREPARE _q;`);
   } catch (err) {
     console.error(err);
   }
@@ -182,31 +188,28 @@ async function generateData(
 ) {
   //if(checkMap())
   let data = await (customFaker as any)[sourceArr][sourceMethodArr](paramsArr);
-  switch (mutateData) {
-    case "phoneSeven":
-      data = data.toString();
-      data = data.replace("8", "+7"); 
-      break;
+   switch (mutateData) {
+    // case "phoneSeven":
+    //   console.log()
+    //   data = data.toString();
+    //   data = data.replace("8", "+7");  
+    //   break;
   }
   return data;
 }
 
-async function checkMap(keys: any[], datas: any[]): Promise<boolean> {
-  console.log(keys)
-  console.log(datas)
+async function checkMap(keys: any[], datas: any[]): Promise<void> {
   for (let i = 0;i<keys.length;i++) {
-    if(keys[i]=== ''){
+    if(keys[i]=== ''){ // не добавлять в MAP key = '', data = сгенерированное значение
       datas[i] = ''
       continue
     }
     if (globalMap.has(keys[i])) {
-      console.log("YES")
-      datas[i] = globalMap.get(keys[i]);
+      datas[i] = globalMap.get(keys[i]); 
     } else {
       globalMap.set(keys[i], datas[i]);
     }
   }
-  return false;
 }
 
 
