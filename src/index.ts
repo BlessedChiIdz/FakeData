@@ -1,16 +1,19 @@
 import Fastify, { FastifyInstance, FastifyReply } from "fastify";
 import { IAnyObject } from "./interfaces/IAnyObject";
-import { fastifyPlaginProd } from "./plugins/bg/db";
+import { fastifyPlaginProd } from "./plugins/db";
 import { customFaker } from "./logicComponents/Faker/faker";
 const fs = require("fs");
 
+
 let globalMap = new Map();
+
+
 let config: any;
 fs.readFile("./tables.json", "utf8", function (err: any, data: any) {
   if (err) throw err;
   config = JSON.parse(data);
+  
 });
-
 const fastify: FastifyInstance = Fastify({ logger: true });
 
 // Регистрация плагина для подключения к базе данных
@@ -35,8 +38,8 @@ fastify.get("/prototype", async (req: IAnyObject, reply: FastifyReply) => {
     });
     const lenght:number = tableColumnNames.length;
     const whatToSelect:string = tableColumnNames.join(`", "`);
+    await addIndex(table.tableName, whatToSelect);
     for (const column of table.tableColumns) {
-      await addIndex(table.tableName, whatToSelect);
       columnsInTable.push(column);
     }
     await Update(table.tableName, whatToSelect, columnsInTable, lenght);
@@ -87,7 +90,7 @@ async function addIndex(tableName: string, columnNames: any) {
   //TODO посмотреть быстрее ли заработает программа на больших таблицах
   await fastify.db.query(
     `
-      CREATE INDEX CONCURRENTLY ON public."${tableName}" ("${columnNames}") WHERE x IS NULL;
+      CREATE INDEX ON public."${tableName}" (id) WHERE x IS NULL;
       `
   );
 }
@@ -98,6 +101,7 @@ async function Update(
   columnsInTable: any, // содержимое колонок json объекта
   lenght: number // сколько колонок будет в методе
 ) {
+  let logu = 0;
   console.log(tableName)
   const columnNamesConcat = columnNames.replaceAll(",", ",'newWord',"); // слова, вернувшиеся из запроса будут строкой, разделенные newWord, например 'AnyanewWord1975' - anya 1975
   let params: number[] = await [];
@@ -173,6 +177,12 @@ async function Update(
       rowBeforeUpdate = result[0].old.split("newWord");
       const row = result[0].id;
       k[0] = row;
+      
+      logu++
+      if(logu == 1000){
+        console.log(k[0])
+        logu = 0
+      }
     }
     await fastify.db.query(`DEALLOCATE PREPARE _q;`);
   } catch (err) {
