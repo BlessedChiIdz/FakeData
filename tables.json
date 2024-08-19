@@ -1,14 +1,14 @@
 {
     "connection":{
-        "host": "localhost",          
-        "port": 5555,                 
-        "database": "Faker",  
+        "host": "192.168.32.207",       
+        "port": 5432,                 
+        "database": "bgsevpreprod3",
         "user": "postgres",  
-        "password": "postgres"
+        "password": "zzkpika92"
     },
     "tables": [
         {
-            "tableName": "your_table",
+            "tableName": "Emergency_Declarers",
             "tableColumns": [
                 {
                     "columnName":"fio",
@@ -23,8 +23,7 @@
                     "source": "number",
                     "sourceMethod": "int",
                     "columnProps" : "min:81137190734, max:89137190734",
-                    "multipleProps":"Yes",
-                    "mutateGeneration": "phoneSeven" 
+                    "multipleProps":"Yes"
                 },
                 {
                     "columnName":"contactPhone",
@@ -34,6 +33,191 @@
                     "multipleProps":"Yes"
                 }
             ]
+        },
+        { 
+            "tableName": "Emergency_Humans",
+            "tableColumns": [
+                {
+                    "columnName":"fio",
+                    "source": "person",
+                    "sourceMethod": "fullName"
+                },
+                {
+                    "columnName":"birthYear",
+                    "source": "number",
+                    "sourceMethod": "int",
+                    "columnProps": "min:1958, max:2010",
+                    "multipleProps":"Yes"
+                }
+            ]
+        },
+        {
+            "tableName": "Admin_WantedRegMarks",
+            "tableColumns": [
+                {
+                    "columnName":"owner",
+                    "source": "person",
+                    "sourceMethod": "fullName"
+                },
+                {
+                    "columnName":"responsible",
+                    "source": "person",
+                    "sourceMethod": "fullName"
+                },
+                {
+                    "columnName":"contactPhone",
+                    "source": "number",
+                    "sourceMethod": "int",
+                    "columnProps" : "min:81137190734, max:89137190734",  
+                    "multipleProps":"Yes"
+                }
+            ]
+        },
+        {
+            "tableName": "Admin_ForcesAndResources",
+            "tableColumns": [
+                {
+                    "columnName":"dispatcherName",
+                    "source": "person",
+                    "sourceMethod": "fullName"
+                },
+                {
+                    "columnName":"phone",
+                    "source": "number",
+                    "sourceMethod": "int",
+                    "columnProps" : "min:81137190734, max:89137190734",  
+                    "multipleProps":"Yes",
+                    "mutateGeneration": "phoneSeven"
+                }
+            ]
+        },
+         {
+             "tableName": "Citizens_Citizens",
+             "tableColumns": [
+                 {
+                     "columnName":"surname",
+                     "source": "person",
+                     "sourceMethod": "lastName",
+                     "needMap": "no"
+                 },
+                 {
+                     "columnName":"firstName",
+                     "source": "person",
+                     "sourceMethod": "firstName",
+                     "needMap": "no"
+                 },
+                 {
+                     "columnName":"patronymic",
+                     "source": "person",
+                     "sourceMethod": "middleName",
+                     "needMap": "no"
+                 }
+             ]
+         },
+         {
+            "tableName": "Citizens_CitizensPhones",
+            "tableColumns": [
+                {
+                    "columnName":"phoneNumber",
+                    "source": "number",
+                    "sourceMethod": "int",
+                    "columnProps" : "min:81137190734, max:89137190734",  
+                    "multipleProps":"Yes"
+                } 
+            ]
+        },
+        {
+            "tableName": "Admin_Organizations",
+            "tableColumns": [
+                {
+                    "columnName":"fioLeader",
+                    "source": "person",
+                    "sourceMethod": "fullName"
+                },
+                {
+                    "columnName":"phoneLeader",
+                    "source": "number",
+                    "sourceMethod": "int",
+                    "columnProps" : "min:81137190734, max:89137190734",  
+                    "multipleProps":"Yes"
+                }
+            ]
+        },
+        {
+            "tableName": "Admin_Officials",
+            "tableColumns":[
+                {
+                    "columnName":"fio",
+                    "source": "person",
+                    "sourceMethod": "fullName"
+                },
+                {
+                    "columnName":"phone",
+                    "source": "number",
+                    "sourceMethod": "int",
+                    "columnProps" : "min:81137190734, max:89137190734",  
+                    "multipleProps":"Yes",
+                    "mutateGeneration": "phoneSeven"
+                }
+            ]
+        },
+        {
+            "tableName": "Forecasting_ForestryFacilities",
+            "tableColumns": [
+                {
+                    "columnName":"responsible",
+                    "source": "person",
+                    "sourceMethod": "firstName"
+                },
+                {
+                    "columnName":"phone",
+                    "source": "number",
+                    "sourceMethod": "int",
+                    "columnProps" : "min:81137190734, max:89137190734",  
+                    "multipleProps":"Yes"
+                }
+            ]
+        },
+        {
+            "tableName": "Directories_HealthFacilities",
+            "tableColumns": [
+                {
+                    "columnName":"director",
+                    "source": "person",
+                    "sourceMethod": "fullName"
+                },
+                {
+                    "columnName":"phone",
+                    "source": "number",
+                    "sourceMethod": "int",
+                    "columnProps" : "min:81137190734, max:89137190734",  
+                    "multipleProps":"Yes",
+                    "mutateGeneration": "phoneSeven"
+                }
+            ]
+        },
+        {
+            "tableName": "Directories_Shelters",
+            "tableColumns": [
+                {
+                    "columnName":"director",
+                    "source": "person",
+                    "sourceMethod": "fullName"
+                },
+                {
+                    "columnName":"directorPhone",
+                    "source": "number",
+                    "sourceMethod": "int",
+                    "columnProps" : "min:81137190734, max:89137190734",  
+                    "multipleProps":"Yes",
+                    "mutateGeneration": "phoneSeven" 
+                },
+                {
+                    "columnName":"officials",
+                    "source": "NULL"
+                }
+            ]
         }
-    ]
-}
+     ]
+ }
+
